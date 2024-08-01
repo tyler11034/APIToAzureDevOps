@@ -1,18 +1,14 @@
-﻿using System;
-
-namespace TylerAPIToDevOps
+﻿namespace DataLayer
 {
-
-    /// <summary>
-    /// Test outcome ADO object
-    /// </summary>
     public class Outcome
     {
-        public string RunBy { get; set; }
+        public int Id { get; set; }
+        public string Title { get; set; }
+        public string AssignedTo { get; set; }
+        public string State { get; set; }
+        public string CurrentOutcome { get; set; }
+        public DateTime ChangedDate { get; set; }
 
-        public string Tester { get; set; }
-        public string TestOutcome { get; set; }  // called Outcome in ADO
-
-        public DateTime TimeStamp { get; set; }
+        public string ChangedBy { get; set; }
     }
 }

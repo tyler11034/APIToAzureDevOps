@@ -1,75 +1,92 @@
-﻿using System;
-using System.Linq;
-using System.Net.Http.Headers;
-using System.Net.Http;
+﻿using ApiConsole;
+using DataLayer;
+using Microsoft.Extensions.Configuration;
+using System.Data.SqlClient;
 using System.Threading.Tasks;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
-using System.Collections.Generic;
-using System.Text;
 
 namespace TylerAPIToDevOps
 {
-
     internal class Program
     {
+        #region Configuration
+        private static IConfiguration Configuration { get; set; }
+        #endregion
+
+        #region Main Method
         public static async Task Main(string[] args)
         {
+            var builder = new ConfigurationBuilder()
+                .SetBasePath(Directory.GetCurrentDirectory())
+                .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true);
+
+            Configuration = builder.Build();
+
+            string connectionString = Configuration.GetConnectionString("DefaultConnection");
+
             var azureDevOpsService = new AzureDevOpsService(
                 AzureDevOpsConfig.Organization,
                 AzureDevOpsConfig.ProjectName,
                 AzureDevOpsConfig.PersonalAccessToken);
 
-            try
-            {
-                // Define all queries with their respective Wiql queries
-                var queries = new Dictionary<Func<Task<List<object>>>, string>
-                {
-                    { async () => (await azureDevOpsService.QueryWorkItemsAsync(QueryConstants.WorkItemWiqlQuery)).Cast<object>().ToList(), "Work Items" },
-                    { async () => (await azureDevOpsService.QueryBugsAsync(QueryConstants.BugWiqlQuery)).Cast<object>().ToList(), "Bugs" },
-                    { async () => (await azureDevOpsService.QueryTestCasesAsync(QueryConstants.TestCaseWiqlQuery)).Cast<object>().ToList(), "Test Cases" },
-                    { async () => (await azureDevOpsService.QueryRequirementsAsync(QueryConstants.RequirementWiqlQuery)).Cast<object>().ToList(), "Requirements" },
-                    { async () => (await azureDevOpsService.QueryOutcomesAsync(QueryConstants.OutcomeWiqlQuery)).Cast<object>().ToList(), "Outcomes" }
-                };
+            bool dataLoadedSuccessfully = false;
 
-                // Execute all queries and print results in order
-                foreach (var query in queries)
+            while (!dataLoadedSuccessfully)
+            {
+                try
                 {
-                    await ProcessQueryAndPrintAsync(azureDevOpsService, query.Key, query.Value);
+                    // For testing purposes if something breaks
+                    // Console.WriteLine(azureDevOpsService.ListFieldsAsync()); // print all available fields
+
+                    #region Clear Old Data
+                    // Clear old data in database
+                    await DeleteOldData.DeleteAllWorkItemsAsync(connectionString);
+                    await DeleteOldData.DeleteAllBugsAsync(connectionString);
+                    await DeleteOldData.DeleteAllTestCasesAsync(connectionString);
+                    await DeleteOldData.DeleteAllRequirementsAsync(connectionString);
+                    await DeleteOldData.DeleteAllOutcomesAsync(connectionString);
+                    Console.WriteLine("Old data deleted successfully.");
+                    #endregion
+
+                    #region Insert Data
+                    // WorkItems
+                    var workItems = await azureDevOpsService.QueryWorkItemsAsync(QueryConstants.WorkItemWiqlQuery);
+                    await AddDataToSQL.InsertWorkItemsIntoDatabaseAsync(connectionString, workItems);
+
+                    // Bugs
+                    var bugs = await azureDevOpsService.QueryBugsAsync(QueryConstants.BugWiqlQuery);
+                    await AddDataToSQL.InsertBugsIntoDatabaseAsync(connectionString, bugs);
+
+                    // TestCases
+                    var testCases = await azureDevOpsService.QueryTestCasesAsync(QueryConstants.TestCaseWiqlQuery);
+                    await AddDataToSQL.InsertTestCasesIntoDatabaseAsync(connectionString, testCases);
+
+                    // Requirements
+                    var requirements = await azureDevOpsService.QueryRequirementsAsync(QueryConstants.RequirementWiqlQuery);
+                    await AddDataToSQL.InsertRequirementsIntoDatabaseAsync(connectionString, requirements);
+
+                    // Outcomes
+                    var outcomes = await azureDevOpsService.QueryOutcomesAsync(QueryConstants.OutcomeWiqlQuery);
+                    await AddDataToSQL.InsertOutcomesIntoDatabaseAsync(connectionString, outcomes);
+
+                    Console.WriteLine("Data inserted successfully.");
+                    dataLoadedSuccessfully = true; // Exit loop if data was inserted successfully
+                    #endregion
+                }
+                catch (SqlException ex)
+                {
+                    Console.WriteLine($"SQL connection failed: {ex.Message}. Retrying in 1 minute...");
+                    await Task.Delay(TimeSpan.FromMinutes(1)); // Wait for 1 minute before retrying
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error occurred: {ex.Message}");
+                    break;
                 }
             }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error occurred: {ex.Message}");
-            }
-            finally
-            {
-                Console.WriteLine("Press any key to exit...");
-                Console.ReadKey(); // Using ReadKey to pause until a key is pressed
-            }
-        }
 
-        // Processes a query asynchronously and prints the first two items' details
-        private static async Task ProcessQueryAndPrintAsync(AzureDevOpsService service, Func<Task<List<object>>> queryFunc, string queryName)
-        {
-            var items = await queryFunc();
-
-            Console.WriteLine($"--- {queryName} ---");
-            for (int i = 0; i < Math.Min(2, items.Count); i++)
-            {
-                PrintDetails(items[i], queryName);
-            }
-            Console.WriteLine();
+            Console.WriteLine("Press any key to exit...");
+            Console.ReadKey(); // Using ReadKey to pause until a key is pressed
         }
-
-        // Prints details of an object dynamically based on its type and query name
-        private static void PrintDetails<T>(T item, string queryName)
-        {
-            var methodInfo = item.GetType().GetMethod("Print" + queryName.Replace(" ", "") + "Details");
-            if (methodInfo != null)
-            {
-                methodInfo.Invoke(item, null);
-            }
-        }
+        #endregion
     }
 }

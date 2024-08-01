@@ -1,10 +1,5 @@
-﻿using System;
-
-namespace TylerAPIToDevOps
+﻿namespace DataLayer
 {
-    /// <summary>
-    /// Base class for all ADO work item objects
-    /// </summary>
     public class WorkItem
     {
         public string AssignedTo { get; set; }
@@ -25,25 +20,8 @@ namespace TylerAPIToDevOps
 
         public string Title { get; set; }
 
+        public string WorkItemType { get; set; }
 
-
-        /// <summary>
-        /// Prints the details of the work item.
-        /// </summary>
-        public void PrintWorkItemDetails()
-        {
-            Console.WriteLine($"ID: {Id}");
-            Console.WriteLine($"Title: {Title}");
-            Console.WriteLine($"Assigned To: {AssignedTo}");
-            Console.WriteLine($"Discipline: {Discipline}");
-            Console.WriteLine($"Original Requirement ID: {OriginalRequirementId}");
-            Console.WriteLine($"Requirement Category: {RequirementCategory}");
-            Console.WriteLine($"Round: {Round}");
-            Console.WriteLine($"State: {State}");
-            Console.WriteLine($"Tags: {Tags}");
-            Console.WriteLine("------------------------------------------");
-        }
+        public string TeamProject { get; set; }
     }
-
-
 }

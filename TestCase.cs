@@ -1,7 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-
-namespace TylerAPIToDevOps
+﻿namespace DataLayer
 {
     /// <summary>
     /// Test case ADO object
@@ -15,14 +12,6 @@ namespace TylerAPIToDevOps
         public Outcome CurrentOutcome()
         {
             return new Outcome();
-        }
-
-        /// <summary>
-        /// Prints the details of the work item.
-        /// </summary>
-        public void PrintTestCaseDetails()
-        {
-
         }
     }
 }
